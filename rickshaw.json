@@ -1,0 +1,29 @@
+{
+    "rickshaw-benchmark": {
+        "schema": {
+            "version": "2020.05.18"
+        }
+    },
+    "benchmark": "tracer",
+    "controller": {
+        "post-script": "%bench-dir%tracer-post-process"
+    },
+    "client": {
+        "files-from-controller": [
+            {
+                "src": "%bench-dir%/tracer-base",
+                "dest": "/usr/bin/"
+            },
+            {
+                "src": "%bench-dir%/tracer-runtime",
+                "dest": "/usr/bin/"
+            },
+            {
+                "src": "%bench-dir%/tracer-client",
+                "dest": "/usr/bin/"
+            }
+        ],
+        "runtime": "tracer-runtime",
+        "start": "tracer-client"
+    }
+}

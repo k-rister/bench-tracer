@@ -1,0 +1,119 @@
+#!/bin/bash
+exec >tracer-client-stderrout.txt
+exec 2>&1
+
+. /usr/bin/tracer-base || (echo "/usr/bin/tracer-base not found"; exit 1)
+
+dump_runtime
+validate_label
+validate_sw_prereqs
+
+if [ -z "${WORKLOAD_CPUS}" ]; then
+    exit_error "WORKLOAD_CPUS is not defined.  This must be defined to run tracer"
+else
+    echo "WORKLOAD_CPUS: ${WORKLOAD_CPUS}"
+fi
+if [ -z "${HK_CPUS}" ]; then
+    exit_error "HK_CPUS is not defined.  This must be defined to run tracer"
+else
+    echo "HK_CPUS: ${HK_CPUS}"
+fi
+
+# defaults
+duration=60
+tracer=osnoise
+
+longopts="duration:,tracer:"
+opts=$(getopt -q -o "d:t:" --longoptions "$longopts" -n "getopt.sh" -- "$@");
+eval set -- "$opts";
+while true; do
+    case "$1" in
+        -d|--duration)
+            shift
+            duration=$1
+            shift
+            ;;
+	-t|--tracer)
+	    shift
+	    tracer=$1
+	    shift
+	    ;;
+        --)
+            shift;
+            break
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+case "${tracer}" in
+    osnoise|timerlat)
+	echo "Running in ${tracer} mode"
+	;;
+    *)
+	exit_error "Invalid tracer mode (${tracer})"
+	;;
+esac
+
+{
+    data_dir=$(pwd)
+    
+    if pushd /sys/kernel/debug/tracing > /dev/null; then
+	echo "${tracer}" > current_tracer
+	echo "tracer: $(cat current_tracer)"
+	echo
+
+	echo "WORKLOAD_CPUS: ${WORKLOAD_CPUS}"
+	echo
+	
+	# convert ${WORKLOAD_CPUS} into a hex cpu mask using toolbox
+	cpumask=$(${TOOLBOX_HOME}/bin/cpumask.py --cpus ${WORKLOAD_CPUS} | grep hexmask | cut -d'=' -f 2)
+
+	echo "${cpumask}" > tracing_cpumask
+	echo "tracing_cpumask: $(cat tracing_cpumask)"
+	echo
+
+	# clear the trace buffer
+	echo > trace
+	
+	case "${tracer}" in
+	    osnoise|timerlat)
+		echo "${WORKLOAD_CPUS}" > osnoise/cpus
+
+		echo "${tracer} config:"
+		more osnoise/*
+		echo
+		;;
+	esac
+
+	# critical section begin
+	date +%s.%N >${data_dir}/begin.txt
+	echo 1 > tracing_on
+	sleep ${duration}
+	echo 0 > tracing_on
+	date +%s.%N >${data_dir}/end.txt
+	# critical section end
+
+	echo "BEGIN: $(cat ${data_dir}/begin.txt)"
+	echo "END:   $(cat ${data_dir}/end.txt)"
+	echo
+
+	echo "TRACE:"
+	cat trace
+
+	# clear the trace buffer
+	echo > trace
+
+	popd > /dev/null
+    else
+	exit_error "Failed to pushd to /sys/kernel/debug/tracing"
+    fi
+} > tracer-run-stderrout.txt 2>&1
+
+rc=0
+
+if [ ${rc} -gt 0 ]; then
+    exit_error "`cat tracer-run-stderrout.txt`"
+fi
