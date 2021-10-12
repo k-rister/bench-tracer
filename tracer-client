@@ -139,57 +139,57 @@ esac
 	done
 	IFS=' '
 
-    if [ ${period} ] && [ ${tracer} == 'osnoise' ]; then
-        previous_period=`cat osnoise/period_us`
-        echo "Setting osnoise/period_us to '$period' for tracer osnoise"
-        echo $period > osnoise/period_us
-    elif [ ${period} ] && [ ${tracer} == 'timerlat' ]; then
-        previous_period=`cat osnoise/timerlat_period_us`
-        echo "Setting osnoise/timerlat_period_us to '$period' for tracer timerlat"
-        echo $period > osnoise/timerlat_period_us
-    else echo "no valid path to set period because the tracer is neither osnoise or timerlat!"
-    fi
+        if [ ${period} ] && [ ${tracer} == 'osnoise' ]; then
+            previous_period=`cat osnoise/period_us`
+            echo "Setting osnoise/period_us to '$period' for tracer osnoise"
+            echo $period > osnoise/period_us
+        elif [ ${period} ] && [ ${tracer} == 'timerlat' ]; then
+            previous_period=`cat osnoise/timerlat_period_us`
+            echo "Setting osnoise/timerlat_period_us to '$period' for tracer timerlat"
+            echo $period > osnoise/timerlat_period_us
+        else echo "no valid path to set period because the tracer is neither osnoise or timerlat!"
+        fi
 
-    # the paths for single noise and total noise differ between kernels 4.x and 5.x
-    if [ ${us_single} ] && [ -d osnoise/stop_tracing_us ]; then
-        previous_us_single=`cat osnoise/stop_tracing_us`
-        echo "Setting osnoise/stop_tracing_us to '$us_single'"
-        echo $us_single > osnoise/stop_tracing_us
-    elif [ ${us_single} ] && [ -d osnoise/stop_tracing_in_us ]; then
-        previous_us_single=`cat osnoise/stop_tracing_in_us`
-        echo "Setting osnoise/stop_tracing_in_us to '$us_single'"
-        echo $us_single > osnoise/stop_tracing_in_us
-    fi
+        # the paths for single noise and total noise differ between kernels 4.x and 5.x
+        if [ ${us_single} ] && [ -d osnoise/stop_tracing_us ]; then
+            previous_us_single=`cat osnoise/stop_tracing_us`
+            echo "Setting osnoise/stop_tracing_us to '$us_single'"
+            echo $us_single > osnoise/stop_tracing_us
+        elif [ ${us_single} ] && [ -d osnoise/stop_tracing_in_us ]; then
+            previous_us_single=`cat osnoise/stop_tracing_in_us`
+            echo "Setting osnoise/stop_tracing_in_us to '$us_single'"
+            echo $us_single > osnoise/stop_tracing_in_us
+        fi
 
-    if [ ${us_total} ] && [ -d osnoise/stop_tracing_total_us ]; then
-        previous_us_total=`cat osnoise/stop_tracing_total_us`
-        echo "Setting osnoise/stop_tracing_total_us to '$us_total'"
-        echo $us_total > osnoise/stop_tracing_total_us
-    elif [ ${us_total} ] && [ -d osnoise/stop_tracing_out_us ]; then
-        previous_us_total=`cat osnoise/stop_tracing_out_us`
-        echo "Setting osnoise/stop_tracing_out_us to '$us_total'"
-        echo $us_total > osnoise/stop_tracing_out_us
-    fi
+        if [ ${us_total} ] && [ -d osnoise/stop_tracing_total_us ]; then
+            previous_us_total=`cat osnoise/stop_tracing_total_us`
+            echo "Setting osnoise/stop_tracing_total_us to '$us_total'"
+            echo $us_total > osnoise/stop_tracing_total_us
+        elif [ ${us_total} ] && [ -d osnoise/stop_tracing_out_us ]; then
+            previous_us_total=`cat osnoise/stop_tracing_out_us`
+            echo "Setting osnoise/stop_tracing_out_us to '$us_total'"
+            echo $us_total > osnoise/stop_tracing_out_us
+        fi
 
-    if [ ${runtime} ]; then
-        previous_runtime=`cat osnoise/runtime_us`
-        echo "setting osnoise/runtime_us to '$runtime'"
-        echo "$runtime" > osnoise/runtime_us
-    fi
+        if [ ${runtime} ]; then
+            previous_runtime=`cat osnoise/runtime_us`
+            echo "setting osnoise/runtime_us to '$runtime'"
+            echo "$runtime" > osnoise/runtime_us
+        fi
 
-    if [ ${threshold} ] && [ -d osnoise/tracing_threshold ]; then
-        previous_threshold=`cat osnoise/tracing_threshold`
-        echo "setting osnoise/tracing_threshold to '$threshold'"
-        echo "$threshold" > osnoise/tracing_threshold
-    fi
+        if [ ${threshold} ] && [ -d osnoise/tracing_threshold ]; then
+            previous_threshold=`cat osnoise/tracing_threshold`
+            echo "setting osnoise/tracing_threshold to '$threshold'"
+            echo "$threshold" > osnoise/tracing_threshold
+        fi
 
-    if [ ${stack} ]; then
-        previous_stack=`cat osnoise/print_stack`
-        echo "setting osnoise/print_stack to '$stack'"
-        echo "$stack" > osnoise/print_stack
-    fi
+        if [ ${stack} ]; then
+            previous_stack=`cat osnoise/print_stack`
+            echo "setting osnoise/print_stack to '$stack'"
+            echo "$stack" > osnoise/print_stack
+        fi
 
-    echo
+        echo
 	case "${tracer}" in
 	    osnoise|timerlat)
 		echo "${tracer} config:"
