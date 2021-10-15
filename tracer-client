@@ -211,68 +211,68 @@ esac
 	echo
 
 	echo "TRACE:"
-    if [ -z ${cpu} ]; then
-        cat trace
-    else
-        cat per_cpu/cpu${cpu}/trace
-    fi
+        if [ -z ${cpu} ]; then
+            cat trace
+        else
+            cat per_cpu/cpu${cpu}/trace
+        fi
 
 	# clear the trace buffer
 	echo > trace
 
-    IFS=','
-    read -a eventarray <<< "$event"
-    for tracepoint in "${eventarray[@]}"; do
-        printf "Disabling tracepoint $tracepoint\n"
-        if [ -e events/osnoise/$tracepoint/enable ]; then
-            echo 0 > events/osnoise/$tracepoint/enable
-        elif [ ${tracepoint} == 'osnoise' ] && [ -e events/osnoise/enable ]; then
-            echo 0 > events/osnoise/enable
-        else
-            echo "Cound not find/disable tracepoint $tracepoint"
-        fi
-    done
-    IFS=' '
+        IFS=','
+        read -a eventarray <<< "$event"
+        for tracepoint in "${eventarray[@]}"; do
+            printf "Disabling tracepoint $tracepoint\n"
+            if [ -e events/osnoise/$tracepoint/enable ]; then
+                echo 0 > events/osnoise/$tracepoint/enable
+            elif [ ${tracepoint} == 'osnoise' ] && [ -e events/osnoise/enable ]; then
+                echo 0 > events/osnoise/enable
+            else
+                echo "Cound not find/disable tracepoint $tracepoint"
+            fi
+        done
+        IFS=' '
 	
-    if [ ${previous_period} ] && [ ${tracer} == 'osnoise' ]; then
-        echo "Restoring osnoise/period_us to '$previous_period' for tracer osnoise"
-        echo $previous_period > osnoise/period_us
-    elif [ ${previous_period} ] && [ ${tracer} == 'timerlat' ]; then
-        echo "Restoring osnoise/timerlat_period_us to '$previous_period' for tracer timerlat"
-        echo $previous_period > osnoise/timerlat_period_us
-    fi
+        if [ ${previous_period} ] && [ ${tracer} == 'osnoise' ]; then
+            echo "Restoring osnoise/period_us to '$previous_period' for tracer osnoise"
+            echo $previous_period > osnoise/period_us
+        elif [ ${previous_period} ] && [ ${tracer} == 'timerlat' ]; then
+            echo "Restoring osnoise/timerlat_period_us to '$previous_period' for tracer timerlat"
+            echo $previous_period > osnoise/timerlat_period_us
+        fi
 
-    # the paths for single noise and total noise differ between kernels 4.x and 5.x
-    if [ ${previous_us_single} ] && [ -d osnoise/stop_tracing_us ]; then
-        echo "Restoring osnoise/stop_tracing_us to '$previous_us_single'"
-        echo $previous_us_single > osnoise/stop_tracing_us
-    elif [ ${previous_us_single} ] && [ -d osnoise/stop_tracing_in_us ]; then
-        echo "Restoring osnoise/stop_tracing_in_us to '$previous_us_single'"
-        echo $previous_us_single > osnoise/stop_tracing_in_us
-    fi
+        # the paths for single noise and total noise differ between kernels 4.x and 5.x
+        if [ ${previous_us_single} ] && [ -d osnoise/stop_tracing_us ]; then
+            echo "Restoring osnoise/stop_tracing_us to '$previous_us_single'"
+            echo $previous_us_single > osnoise/stop_tracing_us
+        elif [ ${previous_us_single} ] && [ -d osnoise/stop_tracing_in_us ]; then
+            echo "Restoring osnoise/stop_tracing_in_us to '$previous_us_single'"
+            echo $previous_us_single > osnoise/stop_tracing_in_us
+        fi
 
-    if [ ${previous_us_total} ] && [ -d osnoise/stop_tracing_total_us ]; then
-        echo "Restoring osnoise/stop_tracing_total_us to '$previous_us_total'"
-        echo $previous_us_total > osnoise/stop_tracing_total_us
-    elif [ ${previous_us_total} ] && [ -d osnoise/stop_tracing_out_us ]; then
-        echo "Restoring osnoise/stop_tracing_out_us to '$previous_us_total'"
-        echo $previous_us_total > osnoise/stop_tracing_out_us
-    fi
+        if [ ${previous_us_total} ] && [ -d osnoise/stop_tracing_total_us ]; then
+            echo "Restoring osnoise/stop_tracing_total_us to '$previous_us_total'"
+            echo $previous_us_total > osnoise/stop_tracing_total_us
+        elif [ ${previous_us_total} ] && [ -d osnoise/stop_tracing_out_us ]; then
+            echo "Restoring osnoise/stop_tracing_out_us to '$previous_us_total'"
+            echo $previous_us_total > osnoise/stop_tracing_out_us
+        fi
 
-    if [ ${previous_runtime} ]; then
-        echo "Restoring osnoise/runtime_us to '$previous_runtime'"
-        echo "$previous_runtime" > osnoise/runtime_us
-    fi
+        if [ ${previous_runtime} ]; then
+            echo "Restoring osnoise/runtime_us to '$previous_runtime'"
+            echo "$previous_runtime" > osnoise/runtime_us
+        fi
 
-    if [ ${previous_threshold} ]; then
-        echo "Restoring osnoise/tracing_threshold to '$previous_threshold'"
-        echo "$previous_threshold" > osnoise/tracing_threshold
-    fi
+        if [ ${previous_threshold} ]; then
+            echo "Restoring osnoise/tracing_threshold to '$previous_threshold'"
+            echo "$previous_threshold" > osnoise/tracing_threshold
+        fi
 
-    if [ ${previous_stack} ]; then
-        echo "Restoring osnoise/print_stack to '$previous_stack'"
-        echo "$previous_stack" > osnoise/print_stack
-    fi
+        if [ ${previous_stack} ]; then
+            echo "Restoring osnoise/print_stack to '$previous_stack'"
+            echo "$previous_stack" > osnoise/print_stack
+        fi
 
 	popd > /dev/null
     else
