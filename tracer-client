@@ -13,6 +13,7 @@ if [ -z "${WORKLOAD_CPUS}" ]; then
 else
     echo "WORKLOAD_CPUS: ${WORKLOAD_CPUS}"
 fi
+
 if [ -z "${HK_CPUS}" ]; then
     exit_error "HK_CPUS is not defined.  This must be defined to run tracer"
 else
@@ -23,8 +24,8 @@ fi
 duration=60
 tracer=osnoise
 
-longopts="duration:,tracer:"
-opts=$(getopt -q -o "d:t:" --longoptions "$longopts" -n "getopt.sh" -- "$@");
+longopts="duration:,tracer:,period:,runtime:,us_single:,us_total:,threshold:,stack:,cpu:,events:"
+opts=$(getopt -q -o "d:t:p:r:u:U:T:s:c:" --longoptions "$longopts" -n "getopt.sh" -- "$@");
 eval set -- "$opts";
 while true; do
     case "$1" in
@@ -33,11 +34,51 @@ while true; do
             duration=$1
             shift
             ;;
-	-t|--tracer)
-	    shift
-	    tracer=$1
-	    shift
-	    ;;
+        -t|--tracer)
+            shift
+            tracer=$1
+            shift
+            ;;
+        -p|--period)
+            shift
+            period=$1
+            shift
+            ;;
+        -r|--runtime)
+            shift
+            runtime=$1
+            shift
+            ;;
+        -u|--us_single)
+            shift
+            us_single=$1
+            shift
+            ;;
+        -U|--us_total)
+            shift
+            us_total=$1
+            shift
+            ;;
+        -T|--threshold)
+            shift
+            threshold=$1
+            shift
+            ;;
+        -s|--stack)
+            shift
+            stack=$1
+            shift
+            ;;
+        -c|--cpu)
+            shift
+            cpu=$1
+            shift
+            ;;
+        --events)
+            shift
+            event=$1
+            shift
+            ;;
         --)
             shift;
             break
@@ -59,15 +100,20 @@ esac
 
 {
     data_dir=$(pwd)
-    
-    if pushd /sys/kernel/debug/tracing > /dev/null; then
+
+    if [ -d /tmp/sys/kernel/debug/tracing ]; then
+        TRACING_DIR=/tmp/sys/kernel/debug/tracing
+    else TRACING_DIR=/sys/kernel/debug/tracing
+    fi
+
+    if pushd ${TRACING_DIR} > /dev/null; then
 	echo "${tracer}" > current_tracer
 	echo "tracer: $(cat current_tracer)"
 	echo
 
 	echo "WORKLOAD_CPUS: ${WORKLOAD_CPUS}"
 	echo
-	
+
 	# convert ${WORKLOAD_CPUS} into a hex cpu mask using toolbox
 	cpumask=$(${TOOLBOX_HOME}/bin/cpumask.py --cpus ${WORKLOAD_CPUS} | grep hexmask | cut -d'=' -f 2)
 
@@ -77,11 +123,75 @@ esac
 
 	# clear the trace buffer
 	echo > trace
-	
+
+	IFS=','
+	read -a eventarray <<< "$event"
+	echo "Found ${#eventarray[*]} tracepoints:"
+	for tracepoint in "${eventarray[@]}"; do
+        printf "Enabling tracepoint $tracepoint\n"
+        if  [ -e events/osnoise/$tracepoint/enable ]; then
+            echo 1 > events/osnoise/$tracepoint/enable
+        elif [ ${tracepoint} == 'osnoise' ] && [ -e events/osnoise/enable ]; then
+            echo 1 > events/osnoise/enable
+        else
+            echo "Cound not find/enable tracepoint $tracepoint"
+        fi
+	done
+	IFS=' '
+
+        if [ ${period} ] && [ ${tracer} == 'osnoise' ]; then
+            previous_period=`cat osnoise/period_us`
+            echo "Setting osnoise/period_us to '$period' for tracer osnoise"
+            echo $period > osnoise/period_us
+        elif [ ${period} ] && [ ${tracer} == 'timerlat' ]; then
+            previous_period=`cat osnoise/timerlat_period_us`
+            echo "Setting osnoise/timerlat_period_us to '$period' for tracer timerlat"
+            echo $period > osnoise/timerlat_period_us
+        else echo "no valid path to set period because the tracer is neither osnoise or timerlat!"
+        fi
+
+        # the paths for single noise and total noise differ between kernels 4.x and 5.x
+        if [ ${us_single} ] && [ -d osnoise/stop_tracing_us ]; then
+            previous_us_single=`cat osnoise/stop_tracing_us`
+            echo "Setting osnoise/stop_tracing_us to '$us_single'"
+            echo $us_single > osnoise/stop_tracing_us
+        elif [ ${us_single} ] && [ -d osnoise/stop_tracing_in_us ]; then
+            previous_us_single=`cat osnoise/stop_tracing_in_us`
+            echo "Setting osnoise/stop_tracing_in_us to '$us_single'"
+            echo $us_single > osnoise/stop_tracing_in_us
+        fi
+
+        if [ ${us_total} ] && [ -d osnoise/stop_tracing_total_us ]; then
+            previous_us_total=`cat osnoise/stop_tracing_total_us`
+            echo "Setting osnoise/stop_tracing_total_us to '$us_total'"
+            echo $us_total > osnoise/stop_tracing_total_us
+        elif [ ${us_total} ] && [ -d osnoise/stop_tracing_out_us ]; then
+            previous_us_total=`cat osnoise/stop_tracing_out_us`
+            echo "Setting osnoise/stop_tracing_out_us to '$us_total'"
+            echo $us_total > osnoise/stop_tracing_out_us
+        fi
+
+        if [ ${runtime} ]; then
+            previous_runtime=`cat osnoise/runtime_us`
+            echo "setting osnoise/runtime_us to '$runtime'"
+            echo "$runtime" > osnoise/runtime_us
+        fi
+
+        if [ ${threshold} ] && [ -d osnoise/tracing_threshold ]; then
+            previous_threshold=`cat osnoise/tracing_threshold`
+            echo "setting osnoise/tracing_threshold to '$threshold'"
+            echo "$threshold" > osnoise/tracing_threshold
+        fi
+
+        if [ ${stack} ]; then
+            previous_stack=`cat osnoise/print_stack`
+            echo "setting osnoise/print_stack to '$stack'"
+            echo "$stack" > osnoise/print_stack
+        fi
+
+        echo
 	case "${tracer}" in
 	    osnoise|timerlat)
-		echo "${WORKLOAD_CPUS}" > osnoise/cpus
-
 		echo "${tracer} config:"
 		more osnoise/*
 		echo
@@ -101,14 +211,72 @@ esac
 	echo
 
 	echo "TRACE:"
-	cat trace
+        if [ -z ${cpu} ]; then
+            cat trace
+        else
+            cat per_cpu/cpu${cpu}/trace
+        fi
 
 	# clear the trace buffer
 	echo > trace
 
+        IFS=','
+        read -a eventarray <<< "$event"
+        for tracepoint in "${eventarray[@]}"; do
+            printf "Disabling tracepoint $tracepoint\n"
+            if [ -e events/osnoise/$tracepoint/enable ]; then
+                echo 0 > events/osnoise/$tracepoint/enable
+            elif [ ${tracepoint} == 'osnoise' ] && [ -e events/osnoise/enable ]; then
+                echo 0 > events/osnoise/enable
+            else
+                echo "Cound not find/disable tracepoint $tracepoint"
+            fi
+        done
+        IFS=' '
+	
+        if [ ${previous_period} ] && [ ${tracer} == 'osnoise' ]; then
+            echo "Restoring osnoise/period_us to '$previous_period' for tracer osnoise"
+            echo $previous_period > osnoise/period_us
+        elif [ ${previous_period} ] && [ ${tracer} == 'timerlat' ]; then
+            echo "Restoring osnoise/timerlat_period_us to '$previous_period' for tracer timerlat"
+            echo $previous_period > osnoise/timerlat_period_us
+        fi
+
+        # the paths for single noise and total noise differ between kernels 4.x and 5.x
+        if [ ${previous_us_single} ] && [ -d osnoise/stop_tracing_us ]; then
+            echo "Restoring osnoise/stop_tracing_us to '$previous_us_single'"
+            echo $previous_us_single > osnoise/stop_tracing_us
+        elif [ ${previous_us_single} ] && [ -d osnoise/stop_tracing_in_us ]; then
+            echo "Restoring osnoise/stop_tracing_in_us to '$previous_us_single'"
+            echo $previous_us_single > osnoise/stop_tracing_in_us
+        fi
+
+        if [ ${previous_us_total} ] && [ -d osnoise/stop_tracing_total_us ]; then
+            echo "Restoring osnoise/stop_tracing_total_us to '$previous_us_total'"
+            echo $previous_us_total > osnoise/stop_tracing_total_us
+        elif [ ${previous_us_total} ] && [ -d osnoise/stop_tracing_out_us ]; then
+            echo "Restoring osnoise/stop_tracing_out_us to '$previous_us_total'"
+            echo $previous_us_total > osnoise/stop_tracing_out_us
+        fi
+
+        if [ ${previous_runtime} ]; then
+            echo "Restoring osnoise/runtime_us to '$previous_runtime'"
+            echo "$previous_runtime" > osnoise/runtime_us
+        fi
+
+        if [ ${previous_threshold} ]; then
+            echo "Restoring osnoise/tracing_threshold to '$previous_threshold'"
+            echo "$previous_threshold" > osnoise/tracing_threshold
+        fi
+
+        if [ ${previous_stack} ]; then
+            echo "Restoring osnoise/print_stack to '$previous_stack'"
+            echo "$previous_stack" > osnoise/print_stack
+        fi
+
 	popd > /dev/null
     else
-	exit_error "Failed to pushd to /sys/kernel/debug/tracing"
+	exit_error "Failed to pushd to ${TRACING_DIR}"
     fi
 } > tracer-run-stderrout.txt 2>&1
 
